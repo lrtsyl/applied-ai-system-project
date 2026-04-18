@@ -1,196 +1,208 @@
-# PawPal+
+# PawPal AI Care Copilot
 
-PawPal+ is a CLI-first pet care management system built with Python OOP and a Streamlit UI. It helps one owner manage multiple pets, schedule care tasks, and use simple algorithms to keep the day organized.
+PawPal AI Care Copilot is the final applied AI extension of my earlier **PawPal+** project.
 
-## What the system does
+## Base project and original scope
 
-PawPal+ lets a user:
+The original project was **PawPal+**, a Python OOP pet-care scheduler with a CLI demo and a Streamlit UI. It let one owner manage multiple pets, add care tasks, sort and filter tasks, detect exact-time conflicts, advance recurring tasks, and save/load data with JSON persistence.
 
-- add and manage multiple pets
-- schedule tasks such as feedings, walks, medications, grooming, play, and vet visits
-- sort tasks across pets by time
-- filter tasks by pet, completion status, date, and priority
-- detect exact-time scheduling conflicts
-- auto-create the next daily or weekly task when a recurring task is completed
-- suggest the next available open slot on a day
-- save and load pets and tasks with JSON persistence
+That original system was useful for organizing care schedules, but it did not understand natural-language questions or explain plans in a grounded AI-assisted way.
 
-## Core classes
+## What this new system does
 
-### `Task`
-Stores one pet care task.
+This new version extends PawPal+ into an applied AI system that can answer pet-care planning questions using:
 
-Attributes:
-- `description`
-- `time_str`
-- `due_date`
-- `frequency`
-- `priority`
-- `completed`
-- `category`
+- the owner’s saved pet/task data
+- local care documents
+- guardrails for unsafe medical requests
+- a grounding check for answer reliability
+- observable plan steps so the workflow is inspectable
 
-Key methods:
-- `mark_complete()`
-- `next_occurrence()`
-- `sort_key()`
-- `priority_rank()`
+Example questions:
+- `What should Luna and Milo do today?`
+- `Are there any conflicts in my schedule today?`
+- `Plan tomorrow morning for all pets and explain why.`
+- `My dog is vomiting blood. What dose should I give?`
 
-### `Pet`
-Stores one pet and its tasks.
+## New AI features added
 
-Attributes:
-- `name`
-- `species`
-- `age`
-- `tasks`
+This system includes:
 
-Key methods:
-- `add_task(task)`
-- `get_tasks(include_completed=True)`
+1. **Retrieval-Augmented Generation (RAG)**
+   - retrieves relevant chunks from two sources before answering:
+     - structured PawPal pet/task data
+     - custom care documents in `data/care_docs/`
 
-### `Owner`
-Stores the owner and all pets.
+2. **Observable agentic workflow**
+   - the system shows planning steps such as guardrail validation, intent classification, retrieval, answer drafting, and grounding checks
 
-Attributes:
-- `name`
-- `pets`
+3. **Specialized prompting**
+   - uses a PawPal-specific prompt that forces structured sections:
+     - Summary
+     - Action Plan
+     - Why
+     - Sources
+     - Safety Note
 
-Key methods:
-- `add_pet(pet)`
-- `get_pet(name)`
-- `get_all_tasks(include_completed=True)`
-- `save_to_json(filepath)`
-- `load_from_json(filepath)`
+4. **Reliability harness**
+   - blocks emergency, diagnosis, and medication-dosage requests
+   - checks whether answers are grounded in retrieved sources
+   - falls back to a deterministic grounded summary when free-form generation is not sufficiently supported
 
-### `Scheduler`
-Acts as the logic layer across all pets.
+## Architecture overview
 
-Key methods:
-- `get_all_tasks()`
-- `sort_by_time()`
-- `sort_by_priority_then_time()`
-- `filter_tasks()`
-- `mark_task_complete()`
-- `detect_conflicts()`
-- `todays_schedule()`
-- `next_available_slot()`
+See `assets/architecture_mermaid.md` for the system diagram.
 
-## Smarter scheduling
+The main flow is:
+1. user asks a question in Streamlit or CLI
+2. guardrails inspect the request
+3. retriever pulls relevant schedule data and care notes
+4. prompt builder creates a grounded AI request
+5. model generates an answer
+6. grounding evaluator checks citations and source overlap
+7. final answer, reliability metrics, and planning steps are shown to the user
 
-The scheduler includes these algorithmic features:
+## Project files
 
-1. **Chronological sorting**  
-   Tasks are sorted by due date and time.
+- `pawpal_system.py` — original backend classes and scheduling logic
+- `app.py` — Streamlit UI with scheduler + AI copilot tab
+- `main.py` — CLI demo for end-to-end AI examples
+- `care_copilot.py` — integrated AI workflow
+- `rag_retriever.py` — multi-source retrieval over tasks and care docs
+- `guardrails.py` — safety rules and grounding checks
+- `llm_client.py` — mock / Ollama / OpenAI-compatible LLM backend wrapper
+- `demo_data.py` — demo pets and tasks for consistent examples
+- `eval_harness.py` — evaluation script with pass/fail summary
+- `tests/` — pytest suite
+- `assets/architecture_mermaid.md` — system architecture diagram
 
-2. **Filtering across multiple pets**  
-   Tasks can be filtered by pet, completion status, due date, and priority.
+## Setup instructions
 
-3. **Conflict detection**  
-   The scheduler warns when two pets have tasks at the exact same date and time.
-
-4. **Recurring task handling**  
-   Completing a daily or weekly task automatically creates the next occurrence.
-
-5. **Priority-based scheduling**  
-   Tasks can also be sorted by priority first, then time.
-
-6. **Next available slot suggestion**  
-   The scheduler can suggest the next unused exact time slot on a given day.
-
-## UML
-
-```mermaid
-classDiagram
-    class Owner {
-        +str name
-        +List[Pet] pets
-        +add_pet(pet)
-        +get_pet(name)
-        +get_all_tasks(include_completed=True)
-        +save_to_json(filepath)
-        +load_from_json(filepath)
-    }
-
-    class Pet {
-        +str name
-        +str species
-        +int age
-        +List[Task] tasks
-        +add_task(task)
-        +get_tasks(include_completed=True)
-    }
-
-    class Task {
-        +str description
-        +str time_str
-        +date due_date
-        +str frequency
-        +str priority
-        +bool completed
-        +str category
-        +mark_complete()
-        +next_occurrence()
-        +sort_key()
-        +priority_rank()
-    }
-
-    class Scheduler {
-        +Owner owner
-        +get_all_tasks(include_completed=True)
-        +sort_by_time(tasks=None)
-        +sort_by_priority_then_time(tasks=None)
-        +filter_tasks(pet_name=None, completed=None, due_date=None, priority=None)
-        +mark_task_complete(pet_name, description, time_str, due_date=None)
-        +detect_conflicts()
-        +todays_schedule()
-        +next_available_slot(due_date=None, start_hour=6, end_hour=22, interval_minutes=30)
-    }
-
-    Owner "1" --> "*" Pet : has
-    Pet "1" --> "*" Task : has
-    Scheduler "1" --> "1" Owner : manages
-```
-
-## Agent Mode / AI-assisted implementation notes
-
-I used AI in an agent-style workflow to help coordinate changes across the backend logic, CLI demo, tests, documentation, and Streamlit UI.
-
-A good example was the addition of `next_available_slot()` and JSON persistence:
-- the backend class design had to be updated in `pawpal_system.py`
-- the CLI demo in `main.py` had to show the feature
-- the Streamlit UI in `app.py` had to display the result and use saved data
-- the README and tests had to be updated so the new behavior was documented and verified
-
-AI was most useful for proposing step-by-step implementation order, generating draft code for each file, and helping keep the class design consistent while features were added incrementally. I still reviewed each change manually to make sure it matched the rubric and my final UML.
-
-### Stretch features included
-
-- **Advanced algorithmic capability:** `next_available_slot()` suggests the next open exact time slot on a day
-- **Data persistence layer:** pets and tasks are saved and loaded with JSON
-- **Advanced scheduling logic:** tasks can be sorted by priority and then time
-- **Professional formatting:** the CLI and Streamlit app use cleaner tables, emojis, and readable status labels
-
-## Files
-
-- `pawpal_system.py` — backend logic and classes
-- `main.py` — CLI demo script
-- `app.py` — Streamlit interface
-- `tests/test_pawpal.py` — pytest suite
-
-## Running the CLI demo
+### 1. Create a virtual environment
 
 ```bash
-python main.py
+python -m venv .venv
+source .venv/bin/activate
 ```
 
-## Running the Streamlit app
+On Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Choose an LLM backend
+
+This project supports three modes:
+
+**Option A: mock mode (fastest for testing)**
+```bash
+export LLM_BACKEND=mock
+```
+
+**Option B: Ollama**
+```bash
+export LLM_BACKEND=ollama
+export LLM_MODEL=llama3.1
+```
+
+**Option C: OpenAI-compatible endpoint**
+```bash
+export LLM_BACKEND=openai_compat
+export OPENAI_API_KEY=your_key_here
+export OPENAI_COMPAT_URL=https://api.openai.com/v1/chat/completions
+export LLM_MODEL=gpt-4o-mini
+```
+
+### 4. Run the Streamlit app
 
 ```bash
 streamlit run app.py
 ```
 
-## Running tests
+### 5. Run the CLI demo
 
 ```bash
-python -m pytest
+python main.py
 ```
+
+### 6. Run the evaluation harness
+
+```bash
+python eval_harness.py
+```
+
+### 7. Run tests
+
+```bash
+pytest
+```
+
+## Sample interactions
+
+### Example 1 — normal planning request
+
+Input:
+```
+What should Luna and Milo do today?
+```
+
+Expected behavior:
+- retrieves Luna and Milo task chunks
+- retrieves care document chunks
+- returns a structured answer with citations
+- shows planning steps and grounding score
+
+### Example 2 — conflict request
+
+Input:
+```
+Are there any conflicts in my schedule today?
+```
+
+Expected behavior:
+- surfaces the exact-time conflict at 18:00
+- explains which pets/tasks are involved
+- cites retrieved schedule sources
+
+### Example 3 — unsafe medical request
+
+Input:
+```
+My dog is vomiting blood. What dose should I give?
+```
+
+Expected behavior:
+- blocks the request with a guardrail
+- tells the user to contact a veterinarian or emergency clinic
+- does not give a dose or diagnosis
+
+## Design decisions and trade-offs
+
+I kept retrieval lightweight and transparent by using rule-based keyword scoring instead of a full vector database. That made the project easier to explain, inspect, and test within the time limits.
+
+I also restricted the AI system to routine planning and grounded summaries. That means the system is safer and easier to evaluate, but it also means it cannot answer specialized medical questions or handle complex cases that need professional judgment.
+
+## Testing summary
+
+The project includes:
+- backend scheduling tests from the original PawPal+ system
+- AI feature tests for retrieval, guardrails, planning steps, and grounding
+- an evaluation harness that runs several predefined prompts and prints:
+  - pass/fail checks
+  - average grounding score
+  - baseline vs specialized prompt comparison
+
+## Reflection
+
+This project showed me that the hardest part of building applied AI systems is not just generating text. It is making the AI retrieve the right information, limit unsafe behavior, and explain what it is doing in a way that another person can inspect and trust.
+
+## Demo walkthrough
+
+![PawPal AI Care Copilot walkthrough](assets/walkthrough.gif)
