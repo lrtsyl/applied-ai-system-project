@@ -4,3 +4,18 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 pawpal_data.json
+
+# local env / secrets
+.env
+.env.*
+
+# editor junk
+.vscode/
+.idea/
+
+# test / coverage output
+.coverage
+htmlcov/
+
+# logs
+*.log
