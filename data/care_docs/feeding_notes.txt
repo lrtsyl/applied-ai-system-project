@@ -1,0 +1,1 @@
+Feeding reminders should stay consistent and easy to verify. When an AI assistant summarizes feeding plans, it should point back to the saved task schedule rather than inventing meal amounts or special diets.

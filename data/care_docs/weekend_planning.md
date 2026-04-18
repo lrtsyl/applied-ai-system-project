@@ -1,0 +1,1 @@
+Weekend pet-care planning works best when the owner checks high-priority recurring tasks first, then adds enrichment, grooming, or cleanup tasks around them. If two pets have tasks at the same exact time, the schedule should either be spaced out or clearly marked as a conflict so the owner can decide what to move.
